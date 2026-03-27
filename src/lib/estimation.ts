@@ -1,8 +1,14 @@
 import type { Difficulty, DifficultyEstimate } from './types'
+import { isRareFirstChar } from './validation'
 
 const CASE_SENSITIVE_ALPHABET_SIZE = 58
 // Case-insensitive: 9 digits + 23 letter pairs (A/a..Z/z minus excluded) + 'i' alone + 'L' alone = 34
 const CASE_INSENSITIVE_ALPHABET_SIZE = 34
+
+// ~94% of Ed25519 keypairs produce 44-char addresses (first char 1-9, A-H, J).
+// ~6% produce 43-char addresses (first char can be anything).
+// So prefixes starting with K-z only match ~6% of keys = ~17x base multiplier.
+const RARE_FIRST_CHAR_MULTIPLIER = 17
 
 const DEFAULT_SPEED_PER_WORKER = 30_000 // conservative estimate
 
@@ -33,7 +39,13 @@ export function estimateDifficulty(
     ? CASE_SENSITIVE_ALPHABET_SIZE
     : CASE_INSENSITIVE_ALPHABET_SIZE
 
-  const expectedAttempts = Math.pow(alphabetSize, totalLength)
+  let expectedAttempts = Math.pow(alphabetSize, totalLength)
+
+  // If the prefix starts with a rare first character (K-z), only ~6% of keys
+  // can match, so multiply expected attempts accordingly
+  if (prefix.length > 0 && isRareFirstChar(prefix)) {
+    expectedAttempts *= RARE_FIRST_CHAR_MULTIPLIER
+  }
 
   const workerCount = getWorkerCount()
   const speed = measuredSpeed ?? DEFAULT_SPEED_PER_WORKER * workerCount

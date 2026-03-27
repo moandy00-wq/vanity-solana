@@ -2,9 +2,9 @@ import type { ValidationResult } from './types'
 
 export const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
-// Valid first characters for 44-char Solana addresses (32-byte Ed25519 pubkeys)
-// Max 32-byte value in base58 starts with 'J', so only chars up to 'J' are valid
-const VALID_FIRST_CHARS = '123456789ABCDEFGHJ'
+// ~94% of Ed25519 keypair addresses are 44 chars and can only start with these.
+// The remaining ~6% are 43 chars and can start with ANY base58 character.
+const COMMON_FIRST_CHARS = '123456789ABCDEFGHJ'
 
 const base58Set = new Set(BASE58_ALPHABET)
 
@@ -18,8 +18,8 @@ export function getInvalidChars(input: string): string[] {
   return invalid
 }
 
-export function isImpossibleFirstChar(char: string): boolean {
-  return char.length > 0 && !VALID_FIRST_CHARS.includes(char[0]!)
+export function isRareFirstChar(char: string): boolean {
+  return char.length > 0 && !COMMON_FIRST_CHARS.includes(char[0]!)
 }
 
 export function validateVanityInput(prefix: string, suffix: string): ValidationResult {
@@ -42,16 +42,16 @@ export function validateVanityInput(prefix: string, suffix: string): ValidationR
     )
   }
 
-  // Check for impossible first character
-  if (prefix.length > 0 && invalidPrefix.length === 0 && isImpossibleFirstChar(prefix)) {
-    errors.push(
-      `Solana addresses cannot start with '${prefix[0]}'. Valid first characters: 1-9, A-H, J.`
+  // Warn about rare first characters (valid but ~58x slower to find)
+  if (prefix.length > 0 && invalidPrefix.length === 0 && isRareFirstChar(prefix)) {
+    warnings.push(
+      `Addresses starting with '${prefix[0]}' are rare (~6% of keypairs). This will take ~58x longer than common first characters (1-9, A-H, J).`
     )
   }
 
-  // Warnings for difficulty
+  // Warn about '1' as first char
   if (prefix.length > 0 && prefix[0] === '1' && invalidPrefix.length === 0) {
-    warnings.push("Addresses starting with '1' are extremely rare (~1/256 chance per attempt).")
+    warnings.push("Addresses starting with '1' are extremely rare (~0.4% of keypairs).")
   }
 
   const totalLength = prefix.length + suffix.length
