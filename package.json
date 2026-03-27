@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:wasm && vite build",
+    "build": "vite build",
+    "build:full": "npm run build:wasm && vite build",
     "build:wasm": "cd wasm && wasm-pack build --target web --release --out-dir ../src/wasm-pkg",
     "preview": "vite preview",
     "lint": "eslint ."
